@@ -28,6 +28,7 @@
 
 const hypercall_args_t hypercall_args_table[NR_hypercalls] =
 {
+    ARGS(hello_hypercall, 1),
     ARGS(set_trap_table, 1),
     ARGS(mmu_update, 4),
     ARGS(set_gdt, 2),
