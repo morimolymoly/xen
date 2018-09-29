@@ -21,6 +21,7 @@ GLOBAL(hypercall_page)
         .type  HYPERCALL_ ## name, STT_FUNC;                                    \
         .size  HYPERCALL_ ## name, 32
 
+DECLARE_HYPERCALL(hello_hypercall)
 DECLARE_HYPERCALL(set_trap_table)
 DECLARE_HYPERCALL(mmu_update)
 DECLARE_HYPERCALL(set_gdt)
