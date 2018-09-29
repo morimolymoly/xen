@@ -113,6 +113,7 @@ static long hvm_physdev_op(int cmd, XEN_GUEST_HANDLE_PARAM(void) arg)
 #define do_arch_1             paging_domctl_continuation
 
 static const hypercall_table_t hvm_hypercall_table[] = {
+    HYPERCALL(hello_hypercall),
     HVM_CALL(memory_op),
     HVM_CALL(grant_table_op),
     COMPAT_CALL(vcpu_op),

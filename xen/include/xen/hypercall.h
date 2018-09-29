@@ -20,6 +20,9 @@
 #include <xsm/xsm.h>
 
 extern long
+do_hello_hypercall(char *text);
+
+extern long
 do_sched_op(
     int cmd,
     XEN_GUEST_HANDLE_PARAM(void) arg);

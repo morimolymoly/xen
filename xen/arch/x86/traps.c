@@ -80,6 +80,11 @@
 #include <asm/pv/traps.h>
 #include <asm/pv/mm.h>
 
+long do_hello_hypercall(char *text) {
+    printk("HELLO HYPERCALL!!: %s\n", text);
+    return 0;
+}
+
 /*
  * opt_nmi: one of 'ignore', 'dom0', or 'fatal'.
  *  fatal:  Xen prints diagnostic message and then hangs.
