@@ -646,7 +646,7 @@ static int hap_page_fault(struct vcpu *v, unsigned long va,
 {
     //struct domain *d = v->domain;
 
-    HAP_ERROR("Intercepted a guest #PF (%pv) with HAP enabled\n", v);
+    //HAP_ERROR("Intercepted a guest #PF (%pv) with HAP enabled\n", v);
     //domain_crash(d);
     return 0;
 }
