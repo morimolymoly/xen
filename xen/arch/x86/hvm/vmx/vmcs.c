@@ -1234,6 +1234,7 @@ static int construct_vmcs(struct vcpu *v)
               | (paging_mode_hap(d) ? 0 : (1U << TRAP_page_fault))
               | (v->arch.fully_eager_fpu ? 0 : (1U << TRAP_no_device));
     v->arch.hvm_vmx.exception_bitmap = v->arch.hvm_vmx.exception_bitmap | (1U << TRAP_page_fault);
+    printk("TRAP PAGEFAULT\n");
     vmx_update_exception_bitmap(v);
 
     v->arch.hvm_vcpu.guest_cr[0] = X86_CR0_PE | X86_CR0_ET;
