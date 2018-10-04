@@ -1889,7 +1889,7 @@ static void vmx_inject_event(const struct x86_event *event)
         ASSERT(_event.type == X86_EVENTTYPE_HW_EXCEPTION);
         printk("cr2:0x%lx rip:0x%lx\n", _event.cr2, guest_cpu_user_regs()->rip);
         curr->arch.hvm_vcpu.guest_cr[2] = _event.cr2;
-        curr->arch.hvm_vcpu.guest_cr[2] = guest_cpu_user_regs()->rip;
+        //curr->arch.hvm_vcpu.guest_cr[2] = guest_cpu_user_regs()->rip;
         break;
     }
 
