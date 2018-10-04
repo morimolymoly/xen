@@ -1175,25 +1175,25 @@ static void vmx_get_segment_register(struct vcpu *v, enum x86_segment seg,
         (!(attr & (1u << 16)) << 7) | (attr & 0x7f) | ((attr >> 4) & 0xf00);
 
     /* Adjust for virtual 8086 mode */
-    if ( v->arch.hvm_vmx.vmx_realmode && seg <= x86_seg_tr 
+    if ( v->arch.hvm_vmx.vmx_realmode && seg <= x86_seg_tr
          && !(v->arch.hvm_vmx.vm86_segment_mask & (1u << seg)) )
     {
         struct segment_register *sreg = &v->arch.hvm_vmx.vm86_saved_seg[seg];
-        if ( seg == x86_seg_tr ) 
+        if ( seg == x86_seg_tr )
             *reg = *sreg;
         else if ( reg->base != sreg->base || seg == x86_seg_ss )
         {
             /* If the guest's reloaded the segment, remember the new version.
-             * We can't tell if the guest reloaded the segment with another 
+             * We can't tell if the guest reloaded the segment with another
              * one that has the same base.  By default we assume it hasn't,
              * since we don't want to lose big-real-mode segment attributes,
              * but for SS we assume it has: the Ubuntu graphical bootloader
-             * does this and gets badly confused if we leave the old SS in 
+             * does this and gets badly confused if we leave the old SS in
              * place. */
             reg->attr = (seg == x86_seg_cs ? rm_cs_attr : rm_ds_attr);
             *sreg = *reg;
         }
-        else 
+        else
         {
             /* Always give realmode guests a selector that matches the base
              * but keep the attr and limit from before */
@@ -1219,8 +1219,8 @@ static void vmx_set_segment_register(struct vcpu *v, enum x86_segment seg,
     {
         /* Remember the proper contents */
         v->arch.hvm_vmx.vm86_saved_seg[seg] = *reg;
-        
-        if ( seg == x86_seg_tr ) 
+
+        if ( seg == x86_seg_tr )
         {
             const struct domain *d = v->domain;
             uint64_t val = d->arch.hvm_domain.params[HVM_PARAM_VM86_TSS_SIZED];
@@ -1255,7 +1255,7 @@ static void vmx_set_segment_register(struct vcpu *v, enum x86_segment seg,
                 limit = 0xffff;
                 v->arch.hvm_vmx.vm86_segment_mask &= ~(1u << seg);
             }
-            else 
+            else
                 v->arch.hvm_vmx.vm86_segment_mask |= (1u << seg);
         }
     }
@@ -1504,7 +1504,7 @@ static void vmx_load_pdptrs(struct vcpu *v)
     page = get_page_from_gfn(v->domain, cr3 >> PAGE_SHIFT, &p2mt, P2M_UNSHARE);
     if ( !page )
     {
-        /* Ideally you don't want to crash but rather go into a wait 
+        /* Ideally you don't want to crash but rather go into a wait
          * queue, but this is the wrong place. We're holding at least
          * the paging lock */
         gdprintk(XENLOG_ERR,
@@ -1744,7 +1744,7 @@ static void vmx_update_guest_efer(struct vcpu *v)
                    (v->arch.hvm_vcpu.guest_efer & EFER_SCE));
 }
 
-void nvmx_enqueue_n2_exceptions(struct vcpu *v, 
+void nvmx_enqueue_n2_exceptions(struct vcpu *v,
             unsigned long intr_fields, int error_code, uint8_t source)
 {
     struct nestedvmx *nvmx = &vcpu_2_nvmx(v);
@@ -1795,9 +1795,9 @@ static void __vmx_inject_exception(int trap, int type, int error_code)
 
     __vmwrite(VM_ENTRY_INTR_INFO, intr_fields);
 
-    /* Can't inject exceptions in virtual 8086 mode because they would 
+    /* Can't inject exceptions in virtual 8086 mode because they would
      * use the protected-mode IDT.  Emulate at the next vmenter instead. */
-    if ( curr->arch.hvm_vmx.vmx_realmode ) 
+    if ( curr->arch.hvm_vmx.vmx_realmode )
         curr->arch.hvm_vmx.vmx_emulate = 1;
 }
 
@@ -1809,7 +1809,7 @@ void vmx_inject_extint(int trap, uint8_t source)
     if ( nestedhvm_vcpu_in_guestmode(v) ) {
         pin_based_cntrl = get_vvmcs(v, PIN_BASED_VM_EXEC_CONTROL);
         if ( pin_based_cntrl & PIN_BASED_EXT_INTR_MASK ) {
-            nvmx_enqueue_n2_exceptions (v, 
+            nvmx_enqueue_n2_exceptions (v,
                INTR_INFO_VALID_MASK |
                MASK_INSR(X86_EVENTTYPE_EXT_INTR, INTR_INFO_INTR_TYPE_MASK) |
                MASK_INSR(trap, INTR_INFO_VECTOR_MASK),
@@ -1829,7 +1829,7 @@ void vmx_inject_nmi(void)
     if ( nestedhvm_vcpu_in_guestmode(v) ) {
         pin_based_cntrl = get_vvmcs(v, PIN_BASED_VM_EXEC_CONTROL);
         if ( pin_based_cntrl & PIN_BASED_NMI_EXITING ) {
-            nvmx_enqueue_n2_exceptions (v, 
+            nvmx_enqueue_n2_exceptions (v,
                INTR_INFO_VALID_MASK |
                MASK_INSR(X86_EVENTTYPE_NMI, INTR_INFO_INTR_TYPE_MASK) |
                MASK_INSR(TRAP_nmi, INTR_INFO_VECTOR_MASK),
@@ -1887,6 +1887,7 @@ static void vmx_inject_event(const struct x86_event *event)
 
     case TRAP_page_fault:
         ASSERT(_event.type == X86_EVENTTYPE_HW_EXCEPTION);
+        printk("cr2:%llx rip:%llx\n", _event.cr2, curr->arch.hvm_vcpu.rip):
         curr->arch.hvm_vcpu.guest_cr[2] = _event.cr2;
         break;
     }
@@ -1912,7 +1913,7 @@ static void vmx_inject_event(const struct x86_event *event)
     if ( nestedhvm_vcpu_in_guestmode(curr) &&
          nvmx_intercepts_exception(curr, _event.vector, _event.error_code) )
     {
-        nvmx_enqueue_n2_exceptions (curr, 
+        nvmx_enqueue_n2_exceptions (curr,
             INTR_INFO_VALID_MASK |
             MASK_INSR(_event.type, INTR_INFO_INTR_TYPE_MASK) |
             MASK_INSR(_event.vector, INTR_INFO_VECTOR_MASK),
@@ -1948,7 +1949,7 @@ static void vmx_set_info_guest(struct vcpu *v)
 
     __vmwrite(GUEST_DR7, v->arch.debugreg[7]);
 
-    /* 
+    /*
      * If the interruptibility-state field indicates blocking by STI,
      * setting the TF flag in the EFLAGS may cause VM entry to fail
      * and crash the guest. See SDM 3B 22.3.1.5.
@@ -3224,7 +3225,7 @@ static int vmx_msr_write_intercept(unsigned int msr, uint64_t msr_content)
         if ( passive_domain_do_wrmsr(msr, msr_content) )
             return X86EMUL_OKAY;
 
-        if ( wrmsr_viridian_regs(msr, msr_content) ) 
+        if ( wrmsr_viridian_regs(msr, msr_content) )
             break;
 
         switch ( long_mode_do_msr_write(msr, msr_content) )
@@ -3704,8 +3705,8 @@ void vmx_vmexit_handler(struct cpu_user_regs *regs)
         {
         case EXIT_REASON_EXCEPTION_NMI:
             if ( vector != TRAP_page_fault
-                 && vector != TRAP_nmi 
-                 && vector != TRAP_machine_check ) 
+                 && vector != TRAP_nmi
+                 && vector != TRAP_machine_check )
             {
         default:
                 perfc_incr(realmode_exits);
@@ -4020,7 +4021,7 @@ void vmx_vmexit_handler(struct cpu_user_regs *regs)
         if ( nvmx_handle_vmclear(regs) == X86EMUL_OKAY )
             update_guest_eip();
         break;
- 
+
     case EXIT_REASON_VMPTRLD:
         if ( nvmx_handle_vmptrld(regs) == X86EMUL_OKAY )
             update_guest_eip();
@@ -4035,7 +4036,7 @@ void vmx_vmexit_handler(struct cpu_user_regs *regs)
         if ( nvmx_handle_vmread(regs) == X86EMUL_OKAY )
             update_guest_eip();
         break;
- 
+
     case EXIT_REASON_VMWRITE:
         if ( nvmx_handle_vmwrite(regs) == X86EMUL_OKAY )
             update_guest_eip();
