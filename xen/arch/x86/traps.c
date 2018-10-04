@@ -81,7 +81,7 @@
 #include <asm/pv/mm.h>
 
 long do_hello_hypercall(char *text) {
-    printk("HELLO HYPERCALL!!: %s\n", text);
+    printk("HELLO!!: %s\n", text);
     return 0;
 }
 
