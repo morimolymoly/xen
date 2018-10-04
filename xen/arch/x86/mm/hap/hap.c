@@ -277,7 +277,7 @@ static struct page_info *hap_alloc_p2m_page(struct domain *d)
 {
     struct page_info *pg;
 
-    /* This is called both from the p2m code (which never holds the 
+    /* This is called both from the p2m code (which never holds the
      * paging lock) and the log-dirty code (which always does). */
     paging_lock_recursive(d);
     pg = hap_alloc(d);
@@ -303,7 +303,7 @@ static void hap_free_p2m_page(struct domain *d, struct page_info *pg)
 {
     struct domain *owner = page_get_owner(pg);
 
-    /* This is called both from the p2m code (which never holds the 
+    /* This is called both from the p2m code (which never holds the
      * paging lock) and the log-dirty code (which always does). */
     paging_lock_recursive(d);
 
@@ -647,7 +647,7 @@ static int hap_page_fault(struct vcpu *v, unsigned long va,
     struct domain *d = v->domain;
 
     HAP_ERROR("Intercepted a guest #PF (%pv) with HAP enabled\n", v);
-    domain_crash(d);
+    //domain_crash(d);
     return 0;
 }
 
@@ -691,7 +691,7 @@ static void hap_update_paging_modes(struct vcpu *v)
     p2m_type_t t;
 
     /* We hold onto the cr3 as it may be modified later, and
-     * we need to respect lock ordering. No need for 
+     * we need to respect lock ordering. No need for
      * checks here as they are performed by vmx_load_pdptrs
      * (the potential user of the cr3) */
     (void)get_gfn(d, cr3_gfn, &t);
@@ -729,7 +729,7 @@ hap_write_p2m_entry(struct domain *d, unsigned long gfn, l1_pgentry_t *p,
     paging_lock(d);
     old_flags = l1e_get_flags(*p);
 
-    if ( nestedhvm_enabled(d) && (old_flags & _PAGE_PRESENT) 
+    if ( nestedhvm_enabled(d) && (old_flags & _PAGE_PRESENT)
          && !p2m_get_hostp2m(d)->defer_nested_flush ) {
         /* We are replacing a valid entry so we need to flush nested p2ms,
          * unless the only change is an increase in access rights. */
