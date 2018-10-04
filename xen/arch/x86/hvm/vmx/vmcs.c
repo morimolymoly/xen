@@ -1252,6 +1252,7 @@ static int construct_vmcs(struct vcpu *v)
 
     if ( paging_mode_hap(d) )
     {
+        printk("HAPHAPHAP\n");
         struct p2m_domain *p2m = p2m_get_hostp2m(d);
         struct ept_data *ept = &p2m->ept;
 
