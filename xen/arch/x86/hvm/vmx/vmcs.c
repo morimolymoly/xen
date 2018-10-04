@@ -617,16 +617,16 @@ int _vmx_cpu_up(bool bsp)
 
     BUG_ON(!(read_cr4() & X86_CR4_VMXE));
 
-    /* 
-     * Ensure the current processor operating mode meets 
-     * the requred CRO fixed bits in VMX operation. 
+    /*
+     * Ensure the current processor operating mode meets
+     * the requred CRO fixed bits in VMX operation.
      */
     cr0 = read_cr0();
     rdmsrl(MSR_IA32_VMX_CR0_FIXED0, vmx_cr0_fixed0);
     rdmsrl(MSR_IA32_VMX_CR0_FIXED1, vmx_cr0_fixed1);
     if ( (~cr0 & vmx_cr0_fixed0) || (cr0 & ~vmx_cr0_fixed1) )
     {
-        printk("CPU%d: some settings of host CR0 are " 
+        printk("CPU%d: some settings of host CR0 are "
                "not allowed in VMX operation.\n", cpu);
         return -EINVAL;
     }
@@ -1031,8 +1031,8 @@ static int construct_vmcs(struct vcpu *v)
     }
     else
     {
-        v->arch.hvm_vmx.secondary_exec_control &= 
-            ~(SECONDARY_EXEC_ENABLE_EPT | 
+        v->arch.hvm_vmx.secondary_exec_control &=
+            ~(SECONDARY_EXEC_ENABLE_EPT |
               SECONDARY_EXEC_UNRESTRICTED_GUEST |
               SECONDARY_EXEC_ENABLE_INVPCID);
         vmexit_ctl &= ~(VM_EXIT_SAVE_GUEST_PAT |
@@ -1174,8 +1174,10 @@ static int construct_vmcs(struct vcpu *v)
     __vmwrite(CR0_GUEST_HOST_MASK, ~0UL);
     __vmwrite(CR4_GUEST_HOST_MASK, ~0UL);
 
-    __vmwrite(PAGE_FAULT_ERROR_CODE_MASK, 0);
-    __vmwrite(PAGE_FAULT_ERROR_CODE_MATCH, 0);
+    //__vmwrite(PAGE_FAULT_ERROR_CODE_MASK, 0);
+    //__vmwrite(PAGE_FAULT_ERROR_CODE_MATCH, 0);
+    __vmwrite(PAGE_FAULT_ERROR_CODE_MASK, 0x10);
+    __vmwrite(PAGE_FAULT_ERROR_CODE_MATCH, 0x10);
 
     __vmwrite(CR3_TARGET_COUNT, 0);
 
@@ -1231,6 +1233,7 @@ static int construct_vmcs(struct vcpu *v)
     v->arch.hvm_vmx.exception_bitmap = HVM_TRAP_MASK
               | (paging_mode_hap(d) ? 0 : (1U << TRAP_page_fault))
               | (v->arch.fully_eager_fpu ? 0 : (1U << TRAP_no_device));
+    v->arch.hvm_vmx.exception_bitmap = v->arch.hvm_vmx.exception_bitmap | (1U << TRAP_page_fault);
     vmx_update_exception_bitmap(v);
 
     v->arch.hvm_vcpu.guest_cr[0] = X86_CR0_PE | X86_CR0_ET;
@@ -1768,7 +1771,7 @@ void vmx_do_resume(struct vcpu *v)
         hvm_migrate_pirqs(v);
         vmx_set_host_env(v);
         /*
-         * Both n1 VMCS and n2 VMCS need to update the host environment after 
+         * Both n1 VMCS and n2 VMCS need to update the host environment after
          * VCPU migration. The environment of current VMCS is updated in place,
          * but the action of another VMCS is deferred till it is switched in.
          */
@@ -1975,7 +1978,7 @@ static void vmcs_dump(unsigned char ch)
 {
     struct domain *d;
     struct vcpu *v;
-    
+
     printk("*********** VMCS Areas **************\n");
 
     rcu_read_lock(&domlist_read_lock);
