@@ -1174,10 +1174,10 @@ static int construct_vmcs(struct vcpu *v)
     __vmwrite(CR0_GUEST_HOST_MASK, ~0UL);
     __vmwrite(CR4_GUEST_HOST_MASK, ~0UL);
 
-    //__vmwrite(PAGE_FAULT_ERROR_CODE_MASK, 0);
-    //__vmwrite(PAGE_FAULT_ERROR_CODE_MATCH, 0);
-    __vmwrite(PAGE_FAULT_ERROR_CODE_MASK, 0x10);
-    __vmwrite(PAGE_FAULT_ERROR_CODE_MATCH, 0x10);
+    __vmwrite(PAGE_FAULT_ERROR_CODE_MASK, 0);
+    __vmwrite(PAGE_FAULT_ERROR_CODE_MATCH, 0);
+    //__vmwrite(PAGE_FAULT_ERROR_CODE_MASK, 0x10);
+    //__vmwrite(PAGE_FAULT_ERROR_CODE_MATCH, 0x10);
 
     __vmwrite(CR3_TARGET_COUNT, 0);
 
@@ -1233,7 +1233,7 @@ static int construct_vmcs(struct vcpu *v)
     v->arch.hvm_vmx.exception_bitmap = HVM_TRAP_MASK
               | (paging_mode_hap(d) ? 0 : (1U << TRAP_page_fault))
               | (v->arch.fully_eager_fpu ? 0 : (1U << TRAP_no_device));
-    v->arch.hvm_vmx.exception_bitmap = v->arch.hvm_vmx.exception_bitmap | (1U << TRAP_page_fault);
+    //v->arch.hvm_vmx.exception_bitmap = v->arch.hvm_vmx.exception_bitmap | (1U << TRAP_page_fault);
     printk("TRAP PAGEFAULT\n");
     vmx_update_exception_bitmap(v);
 
@@ -1246,7 +1246,7 @@ static int construct_vmcs(struct vcpu *v)
     if ( cpu_has_vmx_tpr_shadow )
     {
         __vmwrite(VIRTUAL_APIC_PAGE_ADDR,
-                  page_to_maddr(vcpu_vlapic(v)->regs_page));
+        page_to_maddr(vcpu_vlapic(v)->regs_page));
         __vmwrite(TPR_THRESHOLD, 0);
     }
 
