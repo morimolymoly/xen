@@ -1,0 +1,361 @@
+diff --git xen/arch/x86/guest/hypercall_page.S xen/arch/x86/guest/hypercall_page.S
+index fdd2e72..0ca56ed 100644
+--- xen/arch/x86/guest/hypercall_page.S
++++ xen/arch/x86/guest/hypercall_page.S
+@@ -21,6 +21,7 @@ GLOBAL(hypercall_page)
+         .type  HYPERCALL_ ## name, STT_FUNC;                                    \
+         .size  HYPERCALL_ ## name, 32
+ 
++DECLARE_HYPERCALL(hello_hypercall)
+ DECLARE_HYPERCALL(set_trap_table)
+ DECLARE_HYPERCALL(mmu_update)
+ DECLARE_HYPERCALL(set_gdt)
+diff --git xen/arch/x86/hvm/vmx/vmcs.c xen/arch/x86/hvm/vmx/vmcs.c
+index 2b223a1..3eb75ce 100644
+--- xen/arch/x86/hvm/vmx/vmcs.c
++++ xen/arch/x86/hvm/vmx/vmcs.c
+@@ -617,16 +617,16 @@ int _vmx_cpu_up(bool bsp)
+ 
+     BUG_ON(!(read_cr4() & X86_CR4_VMXE));
+ 
+-    /* 
+-     * Ensure the current processor operating mode meets 
+-     * the requred CRO fixed bits in VMX operation. 
++    /*
++     * Ensure the current processor operating mode meets
++     * the requred CRO fixed bits in VMX operation.
+      */
+     cr0 = read_cr0();
+     rdmsrl(MSR_IA32_VMX_CR0_FIXED0, vmx_cr0_fixed0);
+     rdmsrl(MSR_IA32_VMX_CR0_FIXED1, vmx_cr0_fixed1);
+     if ( (~cr0 & vmx_cr0_fixed0) || (cr0 & ~vmx_cr0_fixed1) )
+     {
+-        printk("CPU%d: some settings of host CR0 are " 
++        printk("CPU%d: some settings of host CR0 are "
+                "not allowed in VMX operation.\n", cpu);
+         return -EINVAL;
+     }
+@@ -1031,8 +1031,8 @@ static int construct_vmcs(struct vcpu *v)
+     }
+     else
+     {
+-        v->arch.hvm_vmx.secondary_exec_control &= 
+-            ~(SECONDARY_EXEC_ENABLE_EPT | 
++        v->arch.hvm_vmx.secondary_exec_control &=
++            ~(SECONDARY_EXEC_ENABLE_EPT |
+               SECONDARY_EXEC_UNRESTRICTED_GUEST |
+               SECONDARY_EXEC_ENABLE_INVPCID);
+         vmexit_ctl &= ~(VM_EXIT_SAVE_GUEST_PAT |
+@@ -1176,6 +1176,8 @@ static int construct_vmcs(struct vcpu *v)
+ 
+     __vmwrite(PAGE_FAULT_ERROR_CODE_MASK, 0);
+     __vmwrite(PAGE_FAULT_ERROR_CODE_MATCH, 0);
++    //__vmwrite(PAGE_FAULT_ERROR_CODE_MASK, 0x10);
++    //__vmwrite(PAGE_FAULT_ERROR_CODE_MATCH, 0x10);
+ 
+     __vmwrite(CR3_TARGET_COUNT, 0);
+ 
+@@ -1231,6 +1233,8 @@ static int construct_vmcs(struct vcpu *v)
+     v->arch.hvm_vmx.exception_bitmap = HVM_TRAP_MASK
+               | (paging_mode_hap(d) ? 0 : (1U << TRAP_page_fault))
+               | (v->arch.fully_eager_fpu ? 0 : (1U << TRAP_no_device));
++    //v->arch.hvm_vmx.exception_bitmap = v->arch.hvm_vmx.exception_bitmap | (1U << TRAP_page_fault);
++    printk("TRAP PAGEFAULT\n");
+     vmx_update_exception_bitmap(v);
+ 
+     v->arch.hvm_vcpu.guest_cr[0] = X86_CR0_PE | X86_CR0_ET;
+@@ -1242,7 +1246,7 @@ static int construct_vmcs(struct vcpu *v)
+     if ( cpu_has_vmx_tpr_shadow )
+     {
+         __vmwrite(VIRTUAL_APIC_PAGE_ADDR,
+-                  page_to_maddr(vcpu_vlapic(v)->regs_page));
++        page_to_maddr(vcpu_vlapic(v)->regs_page));
+         __vmwrite(TPR_THRESHOLD, 0);
+     }
+ 
+@@ -1253,6 +1257,7 @@ static int construct_vmcs(struct vcpu *v)
+ 
+         ept->mfn = pagetable_get_pfn(p2m_get_pagetable(p2m));
+         __vmwrite(EPT_POINTER, ept->eptp);
++        printk("HAPHAPHAP\n");
+     }
+ 
+     if ( paging_mode_hap(d) )
+@@ -1768,7 +1773,7 @@ void vmx_do_resume(struct vcpu *v)
+         hvm_migrate_pirqs(v);
+         vmx_set_host_env(v);
+         /*
+-         * Both n1 VMCS and n2 VMCS need to update the host environment after 
++         * Both n1 VMCS and n2 VMCS need to update the host environment after
+          * VCPU migration. The environment of current VMCS is updated in place,
+          * but the action of another VMCS is deferred till it is switched in.
+          */
+@@ -1975,7 +1980,7 @@ static void vmcs_dump(unsigned char ch)
+ {
+     struct domain *d;
+     struct vcpu *v;
+-    
++
+     printk("*********** VMCS Areas **************\n");
+ 
+     rcu_read_lock(&domlist_read_lock);
+diff --git xen/arch/x86/hvm/vmx/vmx.c xen/arch/x86/hvm/vmx/vmx.c
+index 596e370..4220910 100644
+--- xen/arch/x86/hvm/vmx/vmx.c
++++ xen/arch/x86/hvm/vmx/vmx.c
+@@ -1175,25 +1175,25 @@ static void vmx_get_segment_register(struct vcpu *v, enum x86_segment seg,
+         (!(attr & (1u << 16)) << 7) | (attr & 0x7f) | ((attr >> 4) & 0xf00);
+ 
+     /* Adjust for virtual 8086 mode */
+-    if ( v->arch.hvm_vmx.vmx_realmode && seg <= x86_seg_tr 
++    if ( v->arch.hvm_vmx.vmx_realmode && seg <= x86_seg_tr
+          && !(v->arch.hvm_vmx.vm86_segment_mask & (1u << seg)) )
+     {
+         struct segment_register *sreg = &v->arch.hvm_vmx.vm86_saved_seg[seg];
+-        if ( seg == x86_seg_tr ) 
++        if ( seg == x86_seg_tr )
+             *reg = *sreg;
+         else if ( reg->base != sreg->base || seg == x86_seg_ss )
+         {
+             /* If the guest's reloaded the segment, remember the new version.
+-             * We can't tell if the guest reloaded the segment with another 
++             * We can't tell if the guest reloaded the segment with another
+              * one that has the same base.  By default we assume it hasn't,
+              * since we don't want to lose big-real-mode segment attributes,
+              * but for SS we assume it has: the Ubuntu graphical bootloader
+-             * does this and gets badly confused if we leave the old SS in 
++             * does this and gets badly confused if we leave the old SS in
+              * place. */
+             reg->attr = (seg == x86_seg_cs ? rm_cs_attr : rm_ds_attr);
+             *sreg = *reg;
+         }
+-        else 
++        else
+         {
+             /* Always give realmode guests a selector that matches the base
+              * but keep the attr and limit from before */
+@@ -1219,8 +1219,8 @@ static void vmx_set_segment_register(struct vcpu *v, enum x86_segment seg,
+     {
+         /* Remember the proper contents */
+         v->arch.hvm_vmx.vm86_saved_seg[seg] = *reg;
+-        
+-        if ( seg == x86_seg_tr ) 
++
++        if ( seg == x86_seg_tr )
+         {
+             const struct domain *d = v->domain;
+             uint64_t val = d->arch.hvm_domain.params[HVM_PARAM_VM86_TSS_SIZED];
+@@ -1255,7 +1255,7 @@ static void vmx_set_segment_register(struct vcpu *v, enum x86_segment seg,
+                 limit = 0xffff;
+                 v->arch.hvm_vmx.vm86_segment_mask &= ~(1u << seg);
+             }
+-            else 
++            else
+                 v->arch.hvm_vmx.vm86_segment_mask |= (1u << seg);
+         }
+     }
+@@ -1504,7 +1504,7 @@ static void vmx_load_pdptrs(struct vcpu *v)
+     page = get_page_from_gfn(v->domain, cr3 >> PAGE_SHIFT, &p2mt, P2M_UNSHARE);
+     if ( !page )
+     {
+-        /* Ideally you don't want to crash but rather go into a wait 
++        /* Ideally you don't want to crash but rather go into a wait
+          * queue, but this is the wrong place. We're holding at least
+          * the paging lock */
+         gdprintk(XENLOG_ERR,
+@@ -1744,7 +1744,7 @@ static void vmx_update_guest_efer(struct vcpu *v)
+                    (v->arch.hvm_vcpu.guest_efer & EFER_SCE));
+ }
+ 
+-void nvmx_enqueue_n2_exceptions(struct vcpu *v, 
++void nvmx_enqueue_n2_exceptions(struct vcpu *v,
+             unsigned long intr_fields, int error_code, uint8_t source)
+ {
+     struct nestedvmx *nvmx = &vcpu_2_nvmx(v);
+@@ -1795,9 +1795,9 @@ static void __vmx_inject_exception(int trap, int type, int error_code)
+ 
+     __vmwrite(VM_ENTRY_INTR_INFO, intr_fields);
+ 
+-    /* Can't inject exceptions in virtual 8086 mode because they would 
++    /* Can't inject exceptions in virtual 8086 mode because they would
+      * use the protected-mode IDT.  Emulate at the next vmenter instead. */
+-    if ( curr->arch.hvm_vmx.vmx_realmode ) 
++    if ( curr->arch.hvm_vmx.vmx_realmode )
+         curr->arch.hvm_vmx.vmx_emulate = 1;
+ }
+ 
+@@ -1809,7 +1809,7 @@ void vmx_inject_extint(int trap, uint8_t source)
+     if ( nestedhvm_vcpu_in_guestmode(v) ) {
+         pin_based_cntrl = get_vvmcs(v, PIN_BASED_VM_EXEC_CONTROL);
+         if ( pin_based_cntrl & PIN_BASED_EXT_INTR_MASK ) {
+-            nvmx_enqueue_n2_exceptions (v, 
++            nvmx_enqueue_n2_exceptions (v,
+                INTR_INFO_VALID_MASK |
+                MASK_INSR(X86_EVENTTYPE_EXT_INTR, INTR_INFO_INTR_TYPE_MASK) |
+                MASK_INSR(trap, INTR_INFO_VECTOR_MASK),
+@@ -1829,7 +1829,7 @@ void vmx_inject_nmi(void)
+     if ( nestedhvm_vcpu_in_guestmode(v) ) {
+         pin_based_cntrl = get_vvmcs(v, PIN_BASED_VM_EXEC_CONTROL);
+         if ( pin_based_cntrl & PIN_BASED_NMI_EXITING ) {
+-            nvmx_enqueue_n2_exceptions (v, 
++            nvmx_enqueue_n2_exceptions (v,
+                INTR_INFO_VALID_MASK |
+                MASK_INSR(X86_EVENTTYPE_NMI, INTR_INFO_INTR_TYPE_MASK) |
+                MASK_INSR(TRAP_nmi, INTR_INFO_VECTOR_MASK),
+@@ -1887,7 +1887,9 @@ static void vmx_inject_event(const struct x86_event *event)
+ 
+     case TRAP_page_fault:
+         ASSERT(_event.type == X86_EVENTTYPE_HW_EXCEPTION);
++        //printk("cr2:0x%lx rip:0x%lx\n", _event.cr2, guest_cpu_user_regs()->rip);
+         curr->arch.hvm_vcpu.guest_cr[2] = _event.cr2;
++        //curr->arch.hvm_vcpu.guest_cr[2] = guest_cpu_user_regs()->rip;
+         break;
+     }
+ 
+@@ -1912,7 +1914,7 @@ static void vmx_inject_event(const struct x86_event *event)
+     if ( nestedhvm_vcpu_in_guestmode(curr) &&
+          nvmx_intercepts_exception(curr, _event.vector, _event.error_code) )
+     {
+-        nvmx_enqueue_n2_exceptions (curr, 
++        nvmx_enqueue_n2_exceptions (curr,
+             INTR_INFO_VALID_MASK |
+             MASK_INSR(_event.type, INTR_INFO_INTR_TYPE_MASK) |
+             MASK_INSR(_event.vector, INTR_INFO_VECTOR_MASK),
+@@ -1948,7 +1950,7 @@ static void vmx_set_info_guest(struct vcpu *v)
+ 
+     __vmwrite(GUEST_DR7, v->arch.debugreg[7]);
+ 
+-    /* 
++    /*
+      * If the interruptibility-state field indicates blocking by STI,
+      * setting the TF flag in the EFLAGS may cause VM entry to fail
+      * and crash the guest. See SDM 3B 22.3.1.5.
+@@ -3224,7 +3226,7 @@ static int vmx_msr_write_intercept(unsigned int msr, uint64_t msr_content)
+         if ( passive_domain_do_wrmsr(msr, msr_content) )
+             return X86EMUL_OKAY;
+ 
+-        if ( wrmsr_viridian_regs(msr, msr_content) ) 
++        if ( wrmsr_viridian_regs(msr, msr_content) )
+             break;
+ 
+         switch ( long_mode_do_msr_write(msr, msr_content) )
+@@ -3704,8 +3706,8 @@ void vmx_vmexit_handler(struct cpu_user_regs *regs)
+         {
+         case EXIT_REASON_EXCEPTION_NMI:
+             if ( vector != TRAP_page_fault
+-                 && vector != TRAP_nmi 
+-                 && vector != TRAP_machine_check ) 
++                 && vector != TRAP_nmi
++                 && vector != TRAP_machine_check )
+             {
+         default:
+                 perfc_incr(realmode_exits);
+@@ -4020,7 +4022,7 @@ void vmx_vmexit_handler(struct cpu_user_regs *regs)
+         if ( nvmx_handle_vmclear(regs) == X86EMUL_OKAY )
+             update_guest_eip();
+         break;
+- 
++
+     case EXIT_REASON_VMPTRLD:
+         if ( nvmx_handle_vmptrld(regs) == X86EMUL_OKAY )
+             update_guest_eip();
+@@ -4035,7 +4037,7 @@ void vmx_vmexit_handler(struct cpu_user_regs *regs)
+         if ( nvmx_handle_vmread(regs) == X86EMUL_OKAY )
+             update_guest_eip();
+         break;
+- 
++
+     case EXIT_REASON_VMWRITE:
+         if ( nvmx_handle_vmwrite(regs) == X86EMUL_OKAY )
+             update_guest_eip();
+diff --git xen/arch/x86/hypercall.c xen/arch/x86/hypercall.c
+index 90e88c1..ca3e8a4 100644
+--- xen/arch/x86/hypercall.c
++++ xen/arch/x86/hypercall.c
+@@ -28,6 +28,7 @@
+ 
+ const hypercall_args_t hypercall_args_table[NR_hypercalls] =
+ {
++    ARGS(hello_hypercall, 1),
+     ARGS(set_trap_table, 1),
+     ARGS(mmu_update, 4),
+     ARGS(set_gdt, 2),
+diff --git xen/arch/x86/mm/hap/hap.c xen/arch/x86/mm/hap/hap.c
+index 271c476..63b4b7a 100644
+--- xen/arch/x86/mm/hap/hap.c
++++ xen/arch/x86/mm/hap/hap.c
+@@ -277,7 +277,7 @@ static struct page_info *hap_alloc_p2m_page(struct domain *d)
+ {
+     struct page_info *pg;
+ 
+-    /* This is called both from the p2m code (which never holds the 
++    /* This is called both from the p2m code (which never holds the
+      * paging lock) and the log-dirty code (which always does). */
+     paging_lock_recursive(d);
+     pg = hap_alloc(d);
+@@ -303,7 +303,7 @@ static void hap_free_p2m_page(struct domain *d, struct page_info *pg)
+ {
+     struct domain *owner = page_get_owner(pg);
+ 
+-    /* This is called both from the p2m code (which never holds the 
++    /* This is called both from the p2m code (which never holds the
+      * paging lock) and the log-dirty code (which always does). */
+     paging_lock_recursive(d);
+ 
+@@ -644,10 +644,10 @@ void hap_vcpu_init(struct vcpu *v)
+ static int hap_page_fault(struct vcpu *v, unsigned long va,
+                           struct cpu_user_regs *regs)
+ {
+-    struct domain *d = v->domain;
++    //struct domain *d = v->domain;
+ 
+-    HAP_ERROR("Intercepted a guest #PF (%pv) with HAP enabled\n", v);
+-    domain_crash(d);
++    //HAP_ERROR("Intercepted a guest #PF (%pv) with HAP enabled\n", v);
++    //domain_crash(d);
+     return 0;
+ }
+ 
+@@ -691,7 +691,7 @@ static void hap_update_paging_modes(struct vcpu *v)
+     p2m_type_t t;
+ 
+     /* We hold onto the cr3 as it may be modified later, and
+-     * we need to respect lock ordering. No need for 
++     * we need to respect lock ordering. No need for
+      * checks here as they are performed by vmx_load_pdptrs
+      * (the potential user of the cr3) */
+     (void)get_gfn(d, cr3_gfn, &t);
+@@ -729,7 +729,7 @@ hap_write_p2m_entry(struct domain *d, unsigned long gfn, l1_pgentry_t *p,
+     paging_lock(d);
+     old_flags = l1e_get_flags(*p);
+ 
+-    if ( nestedhvm_enabled(d) && (old_flags & _PAGE_PRESENT) 
++    if ( nestedhvm_enabled(d) && (old_flags & _PAGE_PRESENT)
+          && !p2m_get_hostp2m(d)->defer_nested_flush ) {
+         /* We are replacing a valid entry so we need to flush nested p2ms,
+          * unless the only change is an increase in access rights. */
+diff --git xen/arch/x86/pv/hypercall.c xen/arch/x86/pv/hypercall.c
+index 5d2f8bd..dc2b165 100644
+--- xen/arch/x86/pv/hypercall.c
++++ xen/arch/x86/pv/hypercall.c
+@@ -34,6 +34,7 @@
+ #define do_arch_1             paging_domctl_continuation
+ 
+ static const hypercall_table_t pv_hypercall_table[] = {
++    HYPERCALL(hello_hypercall),
+     COMPAT_CALL(set_trap_table),
+     HYPERCALL(mmu_update),
+     COMPAT_CALL(set_gdt),
+diff --git xen/arch/x86/traps.c xen/arch/x86/traps.c
+index 5219491..c0c136c 100644
+--- xen/arch/x86/traps.c
++++ xen/arch/x86/traps.c
+@@ -81,7 +81,7 @@
+ #include <asm/pv/mm.h>
+ 
+ long do_hello_hypercall(char *text) {
+-    printk("HELLO HYPERCALL!!: %s\n", text);
++    printk("HELLO!!: %s\n", text);
+     return 0;
+ }
+ 
